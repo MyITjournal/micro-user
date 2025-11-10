@@ -29,7 +29,7 @@ import { UsersModule } from './users/users.module';
       useFactory: (configService: ConfigService) => {
         const databaseUrl = configService.get<string>('DATABASE_URL');
 
-        // If DATABASE_URL is provided (e.g., Heroku), use it
+        // Check if DATABASE_URL is provided (Heroku) & use it
         if (databaseUrl) {
           return {
             type: 'postgres',
