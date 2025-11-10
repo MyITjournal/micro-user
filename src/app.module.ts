@@ -35,7 +35,7 @@ import { UsersModule } from './users/users.module';
             type: 'postgres',
             url: databaseUrl,
             entities: [__dirname + '/**/*.entity{.ts,.js}'],
-            synchronize: configService.get('NODE_ENV') !== 'production',
+            synchronize: true, // Auto-create tables on startup
             logging: false,
             ssl:
               configService.get('NODE_ENV') === 'production'
@@ -53,7 +53,7 @@ import { UsersModule } from './users/users.module';
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_NAME', 'user_service'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: configService.get('NODE_ENV') !== 'production',
+          synchronize: true, // Auto-create tables on startup
           logging: false,
         };
       },
