@@ -1,13 +1,18 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Param,
   Query,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { UserPreferencesResponse } from './dto/user.dto';
+import {
+  UserPreferencesResponse,
+  CreateUserPreferencesInput,
+} from './dto/user.dto';
 
 @Controller('api/v1/users')
 export class UserController {
@@ -59,6 +64,33 @@ export class UserController {
           },
         },
         HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+  }
+
+  @Post('preferences')
+  async submitUserPreferences(
+    @Body() input: CreateUserPreferencesInput,
+  ): Promise<UserPreferencesResponse> {
+    try {
+      return await this.userService.submitUserPreferences(input);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Handle validation or other errors
+      throw new HttpException(
+        {
+          error: {
+            code: 'BAD_REQUEST',
+            message: 'Invalid input data',
+            details: {
+              error: error.message,
+            },
+          },
+        },
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
