@@ -1,0 +1,86 @@
+name: Gateway CI
+
+on:
+  workflow_call:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'gateway/**'
+  pull_request:
+    paths:
+      - 'gateway/**'
+
+defaults:
+  run:
+    working-directory: gateway
+
+jobs:
+  validate:
+    name: Validate NGINX Config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate NGINX configuration
+        run: |
+          docker run --rm \
+            -v $(pwd)/nginx:/etc/nginx:ro \
+            nginx:1.25-alpine \
+            nginx -t
+      
+      - name: Check for syntax errors
+        run: |
+          # Check for common mistakes
+          if grep -r "proxy_pass.*localhost" nginx/; then
+            echo "::warning::Found 'localhost' in proxy_pass. Use service names instead."
+          fi
+
+  test:
+    name: Test Gateway Routes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Start gateway with test services
+        run: |
+          cd deployments/docker
+          docker-compose up -d nginx-gateway
+          sleep 5
+      
+      - name: Test health endpoint
+        run: |
+          curl -f http://localhost/health || exit 1
+      
+      - name: Test routing
+        run: |
+          # Test that gateway is routing (will 404 but should reach gateway)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/v1/users)
+          if [ "$STATUS" != "404" ] && [ "$STATUS" != "502" ]; then
+            echo "Unexpected status: $STATUS"
+            exit 1
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd deployments/docker
+          docker-compose down
+
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./gateway
+          file: ./gateway/Dockerfile
+          push: false
+          tags: nginx-gateway:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
