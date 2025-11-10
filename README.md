@@ -1,98 +1,315 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# User Notification Preferences Microservice
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS-based GraphQL microservice for managing user notification preferences with support for multiple channels (email, push) and customizable settings.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- 🔔 User notification preference management
+- 📧 Email channel configuration with quiet hours
+- 📱 Push notification management with device tracking
+- 🌍 Multi-timezone support
+- 🎯 GraphQL API with type safety
+- 💾 PostgreSQL database with TypeORM
+- ✅ Input validation with class-validator
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Architecture
 
-## Project setup
+This service follows NestJS best practices with a modular architecture:
 
-```bash
-$ npm install
+```
+src/
+├── users/
+│   ├── entity/           # TypeORM entities
+│   │   ├── user.entity.ts
+│   │   ├── usersChannel.entity.ts
+│   │   └── userDevices.entity.ts
+│   ├── dto/              # Data Transfer Objects
+│   │   └── user.dto.ts
+│   ├── user.service.ts   # Business logic
+│   ├── user.resolver.ts  # GraphQL resolver
+│   └── users.module.ts   # Module configuration
+└── app.module.ts         # Root module with GraphQL & TypeORM setup
 ```
 
-## Compile and run the project
+## Database Schema
+
+### Entities
+
+1. **User** - Core user information and global preferences
+2. **UserChannel** - Channel-specific settings (email, push)
+3. **UserDevice** - Push notification device registry
+
+### Relationships
+
+- User → UserChannel (One-to-Many)
+- UserChannel → UserDevice (One-to-Many)
+
+## Setup
+
+### Prerequisites
+
+- Node.js >= 18
+- PostgreSQL >= 14
+- npm or yarn
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Create `.env` file from example:
+
+   ```bash
+   copy .env.example .env
+   ```
+
+4. Configure database connection in `.env`:
+
+   ```env
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USERNAME=postgres
+   DB_PASSWORD=postgres
+   DB_NAME=user_service
+   ```
+
+5. Initialize database:
+   ```bash
+   psql -U postgres -f database/schema.sql
+   ```
+
+### Running the Application
 
 ```bash
-# development
-$ npm run start
+# Development mode
+npm run start:dev
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Production mode
+npm run build
+npm run start:prod
 ```
 
-## Run tests
+The service will be available at:
+
+- **GraphQL Endpoint**: `http://localhost:8080/api/v1/graphql`
+- **GraphQL Playground**: `http://localhost:8080/api/v1/graphql` (in browser)
+
+## API Usage
+
+### GraphQL Query
+
+#### Get User Preferences
+
+```graphql
+query GetUserPreferences($userId: String!, $includeChannels: Boolean) {
+  getUserPreferences(user_id: $userId, include_channels: $includeChannels) {
+    user_id
+    email
+    phone
+    timezone
+    language
+    notification_enabled
+    channels {
+      email {
+        enabled
+        verified
+        frequency
+        quiet_hours {
+          enabled
+          start
+          end
+          timezone
+        }
+      }
+      push {
+        enabled
+        devices {
+          device_id
+          platform
+          token
+          last_seen
+          active
+        }
+        quiet_hours {
+          enabled
+          start
+          end
+          timezone
+        }
+      }
+    }
+    preferences {
+      marketing
+      transactional
+      reminders
+      digest {
+        enabled
+        frequency
+        time
+      }
+    }
+    updated_at
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "userId": "usr_7x9k2p",
+  "includeChannels": true
+}
+```
+
+### Example Response
+
+```json
+{
+  "data": {
+    "getUserPreferences": {
+      "user_id": "usr_7x9k2p",
+      "email": "user@example.com",
+      "phone": "+254712345678",
+      "timezone": "Africa/Nairobi",
+      "language": "en",
+      "notification_enabled": true,
+      "channels": {
+        "email": {
+          "enabled": true,
+          "verified": true,
+          "frequency": "immediate",
+          "quiet_hours": {
+            "enabled": true,
+            "start": "22:00",
+            "end": "07:00",
+            "timezone": "Africa/Nairobi"
+          }
+        },
+        "push": {
+          "enabled": true,
+          "devices": [
+            {
+              "device_id": "dev_abc123",
+              "platform": "ios",
+              "token": "fcm_token_xyz...",
+              "last_seen": "2025-01-15T10:25:00Z",
+              "active": true
+            }
+          ],
+          "quiet_hours": {
+            "enabled": false
+          }
+        }
+      },
+      "preferences": {
+        "marketing": false,
+        "transactional": true,
+        "reminders": true,
+        "digest": {
+          "enabled": true,
+          "frequency": "daily",
+          "time": "09:00"
+        }
+      },
+      "updated_at": "2025-01-15T08:00:00Z"
+    }
+  }
+}
+```
+
+## Error Handling
+
+The service implements proper error handling:
+
+### User Not Found (404)
+
+```json
+{
+  "errors": [
+    {
+      "message": "User with ID usr_invalid does not exist",
+      "extensions": {
+        "code": "USER_NOT_FOUND"
+      }
+    }
+  ]
+}
+```
+
+## Testing
 
 ```bash
-# unit tests
-$ npm run test
+# Unit tests
+npm run test
 
-# e2e tests
-$ npm run test:e2e
+# E2E tests
+npm run test:e2e
 
-# test coverage
-$ npm run test:cov
+# Test coverage
+npm run test:cov
+```
+
+## Development
+
+### Adding New Features
+
+1. Create/update entities in `src/users/entity/`
+2. Define DTOs in `src/users/dto/`
+3. Implement business logic in `src/users/user.service.ts`
+4. Add GraphQL queries/mutations in `src/users/user.resolver.ts`
+5. Update module imports if needed
+
+### Code Style
+
+```bash
+# Lint
+npm run lint
+
+# Format
+npm run format
 ```
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Docker
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Create a `Dockerfile`:
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 8080
+CMD ["node", "dist/main"]
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Build and run:
 
-## Resources
+```bash
+docker build -t user-service .
+docker run -p 8080:8080 user-service
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Environment Variables
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+| Variable      | Description       | Default        |
+| ------------- | ----------------- | -------------- |
+| `PORT`        | Server port       | `8080`         |
+| `NODE_ENV`    | Environment       | `development`  |
+| `DB_HOST`     | Database host     | `localhost`    |
+| `DB_PORT`     | Database port     | `5432`         |
+| `DB_USERNAME` | Database user     | `postgres`     |
+| `DB_PASSWORD` | Database password | `postgres`     |
+| `DB_NAME`     | Database name     | `user_service` |
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED
