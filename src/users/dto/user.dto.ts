@@ -1,5 +1,12 @@
 import { ObjectType, Field, InputType, ArgsType } from '@nestjs/graphql';
-import { IsBoolean, IsOptional } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  IsEmail,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 // Query Arguments
 @ArgsType()
@@ -8,6 +15,173 @@ export class GetUserPreferencesArgs {
   @IsOptional()
   @IsBoolean()
   include_channels?: boolean = true;
+}
+
+// Input DTOs for Creating/Updating User Preferences
+@InputType()
+export class QuietHoursInput {
+  @Field()
+  @IsBoolean()
+  enabled: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  start?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  end?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+}
+
+@InputType()
+export class DeviceInput {
+  @Field()
+  @IsString()
+  device_id: string;
+
+  @Field()
+  @IsString()
+  platform: string;
+
+  @Field()
+  @IsString()
+  token: string;
+
+  @Field()
+  @IsBoolean()
+  active: boolean;
+}
+
+@InputType()
+export class EmailChannelInput {
+  @Field()
+  @IsBoolean()
+  enabled: boolean;
+
+  @Field()
+  @IsBoolean()
+  verified: boolean;
+
+  @Field()
+  @IsString()
+  frequency: string;
+
+  @Field(() => QuietHoursInput)
+  @ValidateNested()
+  @Type(() => QuietHoursInput)
+  quiet_hours: QuietHoursInput;
+}
+
+@InputType()
+export class PushChannelInput {
+  @Field()
+  @IsBoolean()
+  enabled: boolean;
+
+  @Field(() => [DeviceInput], { nullable: true })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => DeviceInput)
+  devices?: DeviceInput[];
+
+  @Field(() => QuietHoursInput)
+  @ValidateNested()
+  @Type(() => QuietHoursInput)
+  quiet_hours: QuietHoursInput;
+}
+
+@InputType()
+export class ChannelsInput {
+  @Field(() => EmailChannelInput)
+  @ValidateNested()
+  @Type(() => EmailChannelInput)
+  email: EmailChannelInput;
+
+  @Field(() => PushChannelInput)
+  @ValidateNested()
+  @Type(() => PushChannelInput)
+  push: PushChannelInput;
+}
+
+@InputType()
+export class DigestPreferenceInput {
+  @Field()
+  @IsBoolean()
+  enabled: boolean;
+
+  @Field()
+  @IsString()
+  frequency: string;
+
+  @Field()
+  @IsString()
+  time: string;
+}
+
+@InputType()
+export class UserPreferencesInput {
+  @Field()
+  @IsBoolean()
+  marketing: boolean;
+
+  @Field()
+  @IsBoolean()
+  transactional: boolean;
+
+  @Field()
+  @IsBoolean()
+  reminders: boolean;
+
+  @Field(() => DigestPreferenceInput)
+  @ValidateNested()
+  @Type(() => DigestPreferenceInput)
+  digest: DigestPreferenceInput;
+}
+
+@InputType()
+export class CreateUserPreferencesInput {
+  @Field()
+  @IsString()
+  user_id: string;
+
+  @Field()
+  @IsEmail()
+  email: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @Field()
+  @IsString()
+  timezone: string;
+
+  @Field()
+  @IsString()
+  language: string;
+
+  @Field()
+  @IsBoolean()
+  notification_enabled: boolean;
+
+  @Field(() => ChannelsInput, { nullable: true })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ChannelsInput)
+  channels?: ChannelsInput;
+
+  @Field(() => UserPreferencesInput)
+  @ValidateNested()
+  @Type(() => UserPreferencesInput)
+  preferences: UserPreferencesInput;
 }
 
 // Nested DTOs for Response

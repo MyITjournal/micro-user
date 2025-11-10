@@ -1,8 +1,9 @@
-import { Resolver, Query, Args } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { UserService } from './user.service';
 import {
   UserPreferencesResponse,
   GetUserPreferencesArgs,
+  CreateUserPreferencesInput,
 } from './dto/user.dto';
 
 @Resolver()
@@ -18,5 +19,15 @@ export class UserResolver {
     @Args() args: GetUserPreferencesArgs,
   ): Promise<UserPreferencesResponse> {
     return this.userService.getUserPreferences(userId, args.include_channels);
+  }
+
+  @Mutation(() => UserPreferencesResponse, {
+    name: 'submitUserPreferences',
+    description: 'Create or update user notification preferences',
+  })
+  async submitUserPreferences(
+    @Args('input') input: CreateUserPreferencesInput,
+  ): Promise<UserPreferencesResponse> {
+    return this.userService.submitUserPreferences(input);
   }
 }
