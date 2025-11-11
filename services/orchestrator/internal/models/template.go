@@ -44,6 +44,7 @@ type RenderResponse struct {
 	TemplateID    string       `json:"template_id"`
 	Language      string       `json:"language"`
 	Version       string       `json:"version"`
+	Subject       string       `json:"subject,omitempty"`
 	Rendered      TemplateBody `json:"rendered"`
 	RenderedAt    time.Time    `json:"rendered_at"`
 	VariablesUsed []string     `json:"variables_used"`
