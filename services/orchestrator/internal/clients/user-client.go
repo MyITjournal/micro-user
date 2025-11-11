@@ -6,5 +6,4 @@ import (
 
 type UserClient interface {
 	GetPreferences(userID string) (*models.UserPreferences, error)
-	GetOptOutStatus(userID string) (*models.OptOutStatus, error)
 }

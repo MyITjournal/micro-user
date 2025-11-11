@@ -53,7 +53,6 @@ func (h *UserHandler) Create(c *gin.Context) {
 	logger.Log.Info("User creation request received and validated",
 		zap.String("request_id", requestID.(string)),
 		zap.String("user_email", req.Email),
-		zap.String("initial_lang", req.Language),
 		zap.Bool("email_pref", req.Preferences.Email),
 		zap.Bool("push_pref", req.Preferences.Push),
 	)
@@ -66,10 +65,11 @@ func (h *UserHandler) Create(c *gin.Context) {
 		"success": true,
 		"message": fmt.Sprintf("User registration successful. User ID: %s. Handed off to User Service.", newUserID),
 		"data": gin.H{
-			"user_id":  newUserID,
-			"email":    req.Email,
-			"name":     req.Name,
-			"language": req.Language,
+			"name":        req.Name,
+			"email":       req.Email,
+			"push_token":  req.PushToken,
+			"preferences": req.Preferences,
+			"password":    req.Password,
 		},
 	})
 }

@@ -76,7 +76,7 @@ func (m *TemplateServiceMock) RenderTemplate(templateID, language string, variab
 	}
 
 	// Simple variable substitution
-	renderedSubject := template.Subject
+	renderedSubject := template.Subject // Get subject to render variables
 	renderedHTML := template.Body.HTML
 	renderedText := template.Body.Text
 
@@ -85,16 +85,19 @@ func (m *TemplateServiceMock) RenderTemplate(templateID, language string, variab
 		placeholder := fmt.Sprintf("{{%s}}", key)
 		valueStr := fmt.Sprintf("%v", value)
 
+		// Substitute in Subject
 		if strings.Contains(renderedSubject, placeholder) {
 			renderedSubject = strings.ReplaceAll(renderedSubject, placeholder, valueStr)
 			variablesUsed = append(variablesUsed, key)
 		}
+		// Substitute in HTML Body
 		if strings.Contains(renderedHTML, placeholder) {
 			renderedHTML = strings.ReplaceAll(renderedHTML, placeholder, valueStr)
 			if !contains(variablesUsed, key) {
 				variablesUsed = append(variablesUsed, key)
 			}
 		}
+		// Substitute in Text Body
 		if strings.Contains(renderedText, placeholder) {
 			renderedText = strings.ReplaceAll(renderedText, placeholder, valueStr)
 			if !contains(variablesUsed, key) {
@@ -107,6 +110,7 @@ func (m *TemplateServiceMock) RenderTemplate(templateID, language string, variab
 		TemplateID: templateID,
 		Language:   language,
 		Version:    template.Version,
+		Subject:    renderedSubject, // Return the rendered subject
 		Rendered: models.TemplateBody{
 			HTML: renderedHTML,
 			Text: renderedText,
