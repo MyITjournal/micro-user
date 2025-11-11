@@ -8,9 +8,12 @@ A NestJS-based GraphQL microservice for managing user notification preferences w
 - 📧 Email channel configuration with quiet hours
 - 📱 Push notification management with device tracking
 - 🌍 Multi-timezone support
-- 🎯 GraphQL API with type safety
+- 🎯 GraphQL + REST API with type safety
 - 💾 PostgreSQL database with TypeORM
 - ✅ Input validation with class-validator
+- 📦 Batch operations for multiple users
+- ⚡ Fast opt-out status checks (<100ms)
+- 📊 Last notification tracking
 
 ## Architecture
 
@@ -95,8 +98,59 @@ npm run start:prod
 
 The service will be available at:
 
-- **GraphQL Endpoint**: `http://localhost:8080/api/v1/graphql`
-- **GraphQL Playground**: `http://localhost:8080/api/v1/graphql` (in browser)
+- **GraphQL Playground**: `http://localhost:8080/api/v1/graphql`
+- **REST API**: `http://localhost:8080/api/v1/users`
+
+## API Endpoints
+
+### Core Endpoints
+
+**Get User Preferences**
+
+```bash
+GET /api/v1/users/{user_id}/preferences?include_channels=true
+```
+
+**Submit User Preferences**
+
+```bash
+POST /api/v1/users/preferences
+```
+
+### New Optimized Endpoints
+
+**Batch Get Multiple Users** (max 100 users)
+
+```bash
+POST /api/v1/users/preferences/batch
+{
+  "user_ids": ["usr_1", "usr_2"],
+  "include_channels": true
+}
+```
+
+**Quick Opt-Out Check** (<100ms)
+
+```bash
+GET /api/v1/users/{user_id}/opt-out-status
+```
+
+**Track Last Notification** (fire-and-forget)
+
+```bash
+POST /api/v1/users/{user_id}/last-notification
+{
+  "channel": "email",
+  "notification_type": "marketing",
+  "notification_id": "notif_123",
+  "sent_at": "2025-11-11T10:30:00Z"
+}
+```
+
+📖 **Full Documentation:**
+
+- [NEW_ENDPOINTS_DOCUMENTATION.md](NEW_ENDPOINTS_DOCUMENTATION.md) - Detailed API docs
+- [QUICK_REFERENCE_NEW_ENDPOINTS.md](QUICK_REFERENCE_NEW_ENDPOINTS.md) - Quick reference
 
 ## API Usage
 

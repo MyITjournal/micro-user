@@ -34,8 +34,8 @@ const seedData = async () => {
 
     // Insert sample user
     await client.query(`
-      INSERT INTO users (user_id, email, phone, timezone, language, notification_enabled, marketing, transactional, reminders, digest_enabled, digest_frequency, digest_time)
-      VALUES ('usr_7x9k2p', 'user@example.com', '+254712345678', 'Africa/Nairobi', 'en', true, false, true, true, true, 'daily', '09:00')
+      INSERT INTO users (user_id, email, phone, timezone, language, notification_enabled, marketing, transactional, reminders, digest_enabled, digest_frequency, digest_time, last_notification_email, last_notification_push, last_notification_id)
+      VALUES ('usr_7x9k2p', 'user@example.com', '+254712345678', 'Africa/Nairobi', 'en', true, false, true, true, true, 'daily', '09:00', '2025-01-15 09:30:00', '2025-01-15 10:15:00', 'notif_sample_123')
     `);
 
     // Insert email channel

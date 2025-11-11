@@ -1,4 +1,11 @@
-import { Entity, Column, PrimaryColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryColumn,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { UserChannel } from './usersChannel.entity';
 
@@ -54,8 +61,19 @@ export class User {
   digest_time: string;
 
   @Field(() => [UserChannel], { nullable: true })
-  @OneToMany(() => UserChannel, channel => channel.user, { cascade: true })
+  @OneToMany(() => UserChannel, (channel) => channel.user, { cascade: true })
   channels: UserChannel[];
+  @Field({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  last_notification_email?: Date;
+
+  @Field({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  last_notification_push?: Date;
+
+  @Field({ nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  last_notification_id?: string;
 
   @Field()
   @CreateDateColumn()

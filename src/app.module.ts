@@ -35,7 +35,8 @@ import { UsersModule } from './users/users.module';
             type: 'postgres',
             url: databaseUrl,
             entities: [__dirname + '/**/*.entity{.ts,.js}'],
-            synchronize: true, // Auto-create tables on startup
+            synchronize:
+              configService.get('NODE_ENV') === 'production' ? false : true,
             logging: false,
             ssl:
               configService.get('NODE_ENV') === 'production'
