@@ -18,6 +18,9 @@ CREATE TABLE users (
     digest_enabled BOOLEAN DEFAULT false NOT NULL,
     digest_frequency VARCHAR(20) DEFAULT 'daily' NOT NULL,
     digest_time VARCHAR(5) DEFAULT '09:00' NOT NULL,
+    last_notification_email TIMESTAMP,
+    last_notification_push TIMESTAMP,
+    last_notification_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -59,8 +62,8 @@ CREATE INDEX idx_user_devices_channel_id ON user_devices(channel_id);
 CREATE INDEX idx_user_devices_active ON user_devices(active);
 
 -- Insert sample data
-INSERT INTO users (user_id, email, phone, timezone, language, notification_enabled, marketing, transactional, reminders, digest_enabled, digest_frequency, digest_time)
-VALUES ('usr_7x9k2p', 'user@example.com', '+254712345678', 'Africa/Nairobi', 'en', true, false, true, true, true, 'daily', '09:00');
+INSERT INTO users (user_id, email, phone, timezone, language, notification_enabled, marketing, transactional, reminders, digest_enabled, digest_frequency, digest_time, last_notification_email, last_notification_push, last_notification_id)
+VALUES ('usr_7x9k2p', 'user@example.com', '+254712345678', 'Africa/Nairobi', 'en', true, false, true, true, true, 'daily', '09:00', '2025-01-15 09:30:00', '2025-01-15 10:15:00', 'notif_sample_123');
 
 -- Insert email channel
 INSERT INTO user_channels (id, user_id, channel_type, enabled, verified, frequency, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, quiet_hours_timezone)

@@ -5,6 +5,8 @@ import {
   IsString,
   IsEmail,
   ValidateNested,
+  ArrayMaxSize,
+  ArrayNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -341,4 +343,79 @@ export class ErrorDto {
 export class ErrorResponse {
   @Field(() => ErrorDto)
   error: ErrorDto;
+}
+
+// Batch Get User Preferences DTOs
+@InputType()
+export class BatchGetUserPreferencesInput {
+  @Field(() => [String])
+  @ArrayNotEmpty()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  user_ids: string[];
+
+  @Field(() => Boolean, { nullable: true, defaultValue: true })
+  @IsOptional()
+  @IsBoolean()
+  include_channels?: boolean = true;
+}
+
+@ObjectType()
+export class BatchGetUserPreferencesResponse {
+  @Field(() => [UserPreferencesResponse])
+  users: UserPreferencesResponse[];
+
+  @Field(() => [String])
+  not_found: string[];
+
+  @Field()
+  total_requested: number;
+
+  @Field()
+  total_found: number;
+}
+
+// Check User Opt-Out Status DTOs
+@ObjectType()
+export class OptOutChannelsDto {
+  @Field()
+  email: boolean;
+
+  @Field()
+  push: boolean;
+}
+
+@ObjectType()
+export class OptOutStatusResponse {
+  @Field()
+  user_id: string;
+
+  @Field()
+  opted_out: boolean;
+
+  @Field(() => OptOutChannelsDto)
+  channels: OptOutChannelsDto;
+
+  @Field()
+  checked_at: Date;
+}
+
+// Update Last Notification Time DTOs
+@InputType()
+export class UpdateLastNotificationInput {
+  @Field()
+  @IsString()
+  channel: string;
+
+  @Field()
+  @IsString()
+  notification_type: string;
+
+  @Field()
+  @IsString()
+  notification_id: string;
+
+  @Field()
+  @IsString()
+  sent_at: string;
 }

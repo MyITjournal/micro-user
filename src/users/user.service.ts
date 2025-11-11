@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from './entity/user.entity';
 import { UserChannel } from './entity/usersChannel.entity';
 import { UserDevice } from './entity/userDevices.entity';
@@ -8,6 +8,10 @@ import {
   UserPreferencesResponse,
   ChannelsDto,
   CreateUserPreferencesInput,
+  BatchGetUserPreferencesInput,
+  BatchGetUserPreferencesResponse,
+  OptOutStatusResponse,
+  UpdateLastNotificationInput,
 } from './dto/user.dto';
 
 @Injectable()
@@ -212,5 +216,127 @@ export class UserService {
 
     // Return the created/updated preferences
     return this.getUserPreferences(user.user_id, true);
+  }
+
+  async batchGetUserPreferences(
+    input: BatchGetUserPreferencesInput,
+  ): Promise<BatchGetUserPreferencesResponse> {
+    // Remove duplicates from user_ids
+    const uniqueUserIds = [...new Set(input.user_ids)];
+
+    // Fetch all users in one query
+    const users = await this.userRepository.find({
+      where: { user_id: In(uniqueUserIds) },
+      relations: input.include_channels ? ['channels', 'channels.devices'] : [],
+    });
+
+    // Build response for found users
+    const foundUserIds = new Set(users.map((u) => u.user_id));
+    const usersResponse: UserPreferencesResponse[] = users.map((user) => {
+      const response: UserPreferencesResponse = {
+        user_id: user.user_id,
+        email: user.email,
+        phone: user.phone,
+        timezone: user.timezone,
+        language: user.language,
+        notification_enabled: user.notification_enabled,
+        preferences: {
+          marketing: user.marketing,
+          transactional: user.transactional,
+          reminders: user.reminders,
+          digest: {
+            enabled: user.digest_enabled,
+            frequency: user.digest_frequency,
+            time: user.digest_time,
+          },
+        },
+        updated_at: user.updated_at,
+      };
+
+      if (input.include_channels && user.channels) {
+        response.channels = this.formatChannels(user.channels);
+      }
+
+      return response;
+    });
+
+    // Find not found user IDs
+    const notFound = uniqueUserIds.filter((id) => !foundUserIds.has(id));
+
+    return {
+      users: usersResponse,
+      not_found: notFound,
+      total_requested: uniqueUserIds.length,
+      total_found: usersResponse.length,
+    };
+  }
+
+  async getOptOutStatus(userId: string): Promise<OptOutStatusResponse> {
+    // Use select to only fetch necessary fields for performance
+    const user = await this.userRepository.findOne({
+      where: { user_id: userId },
+      relations: ['channels'],
+      select: ['user_id', 'notification_enabled'],
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: `User with ID ${userId} does not exist`,
+        details: {
+          user_id: userId,
+        },
+      });
+    }
+
+    // Check if user has opted out globally or per channel
+    const emailChannel = user.channels?.find((c) => c.channel_type === 'email');
+    const pushChannel = user.channels?.find((c) => c.channel_type === 'push');
+
+    const emailOptedOut = !user.notification_enabled || !emailChannel?.enabled;
+    const pushOptedOut = !user.notification_enabled || !pushChannel?.enabled;
+    const globalOptedOut = !user.notification_enabled;
+
+    return {
+      user_id: user.user_id,
+      opted_out: globalOptedOut,
+      channels: {
+        email: emailOptedOut,
+        push: pushOptedOut,
+      },
+      checked_at: new Date(),
+    };
+  }
+
+  async updateLastNotificationTime(
+    userId: string,
+    input: UpdateLastNotificationInput,
+  ): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { user_id: userId },
+    });
+
+    if (!user) {
+      // Silently ignore if user doesn't exist (fire-and-forget)
+      return;
+    }
+
+    // Update the appropriate last notification field
+    if (input.channel === 'email') {
+      user.last_notification_email = new Date(input.sent_at);
+    } else if (input.channel === 'push') {
+      user.last_notification_push = new Date(input.sent_at);
+    }
+
+    user.last_notification_id = input.notification_id;
+
+    // Save without waiting (fire-and-forget optimization)
+    this.userRepository.save(user).catch((error) => {
+      // Log error but don't throw (fire-and-forget)
+      console.error(
+        `Failed to update last notification time for user ${userId}:`,
+        error,
+      );
+    });
   }
 }
