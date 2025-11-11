@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -110,21 +111,56 @@ func (h *NotificationHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	logger.Log.Info("Notification status updated",
+	logger.Log.Info("Updating notification status",
 		zap.String("notification_id", notificationID),
 		zap.String("status", req.Status),
 		zap.String("request_id", requestID.(string)),
 	)
 
-	// TODO: Implement logic to update status in persistent storage (e.g., database)
+	// Convert string status to NotificationStatus type
+	notificationStatus := models.NotificationStatus(req.Status)
+	if notificationStatus != models.StatusPending && notificationStatus != models.StatusDelivered && notificationStatus != models.StatusFailed {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": gin.H{
+				"success": false,
+				"message": "Invalid status value",
+				"error":   gin.H{"validation_error": "status must be one of: pending, delivered, failed"},
+			},
+		})
+		return
+	}
+
+	// Update status in database
+	ctx := context.Background()
+	if err := h.orchestrationService.UpdateNotificationStatus(ctx, notificationID, notificationStatus, req.Error); err != nil {
+		logger.Log.Error("Failed to update notification status",
+			zap.String("notification_id", notificationID),
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"success": false,
+				"message": "Failed to update notification status",
+				"error":   gin.H{"internal_server_error": err.Error()},
+			},
+		})
+		return
+	}
+
+	logger.Log.Info("Notification status updated successfully",
+		zap.String("notification_id", notificationID),
+		zap.String("status", req.Status),
+		zap.String("request_id", requestID.(string)),
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": fmt.Sprintf("Status update received for notification %s: %s", notificationID, req.Status),
+		"message": fmt.Sprintf("Status updated for notification %s: %s", notificationID, req.Status),
 		"data": gin.H{
 			"notification_id": notificationID,
-			"status":          "received",
-			"created_at":      time.Now(),
+			"status":          req.Status,
+			"updated_at":      time.Now(),
 		},
 	})
 }

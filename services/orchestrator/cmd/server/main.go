@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/internal/config"
+	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/internal/database"
 	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/internal/handlers"
 	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/internal/middleware"
 	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/internal/mocks"
+	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/internal/repository"
 	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/internal/services"
 	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/pkg/kafka"
 	"github.com/BerylCAtieno/group24-notification-system/services/orchestrator/pkg/logger"
@@ -53,21 +55,34 @@ func main() {
 		zap.String("push_topic", cfg.Kafka.PushTopic),
 	)
 
+	// Initialize PostgreSQL database
+	db, err := database.NewPostgreSQL(cfg.PostgreSQL)
+	if err != nil {
+		logger.Log.Fatal("Failed to initialize database", zap.Error(err))
+	}
+	defer db.Close()
+
+	logger.Log.Info("Database connection established")
+
+	// Initialize repository
+	notificationRepo := repository.NewNotificationRepository(db)
+
 	// Initialize clients (using mocks for now)
 	var userClient = mocks.NewUserServiceMock()
 	var templateClient = mocks.NewTemplateServiceMock()
 
 	logger.Log.Info("Using mock services for development")
 
-	// Initialize services with Kafka
+	// Initialize services with Kafka and repository
 	orchestrationService := services.NewOrchestrationService(
 		userClient,
 		templateClient,
 		kafkaManager,
+		notificationRepo,
 	)
 
 	// Initialize handlers
-	healthHandler := handlers.NewHealthHandler()
+	healthHandler := handlers.NewHealthHandler(db)
 	notificationHandler := handlers.NewNotificationHandler(orchestrationService)
 	userHandler := handlers.NewUserHandler()
 

@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Logging  LoggingConfig
-	Services ServicesConfig
-	Kafka    KafkaConfig
-	Redis    RedisConfig
+	Server     ServerConfig
+	Logging    LoggingConfig
+	Services   ServicesConfig
+	Kafka      KafkaConfig
+	Redis      RedisConfig
+	PostgreSQL PostgreSQLConfig
 }
 
 type ServerConfig struct {
@@ -50,6 +51,16 @@ type RedisConfig struct {
 	DB       int
 }
 
+type PostgreSQLConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	SSLMode  string
+	MaxConns int
+}
+
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
@@ -83,6 +94,15 @@ func Load() *Config {
 			Port:     getEnv("REDIS_PORT", "6379"),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       getIntEnv("REDIS_DB", 0),
+		},
+		PostgreSQL: PostgreSQLConfig{
+			Host:     getEnv("POSTGRES_HOST", "localhost"),
+			Port:     getEnv("POSTGRES_PORT", "5432"),
+			User:     getEnv("POSTGRES_USER", "postgres"),
+			Password: getEnv("POSTGRES_PASSWORD", "postgres"),
+			DBName:   getEnv("POSTGRES_DB", "orchestrator"),
+			SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+			MaxConns: getIntEnv("POSTGRES_MAX_CONNS", 25),
 		},
 	}
 }
