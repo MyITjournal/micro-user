@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { SimpleUsersModule } from './simple-users/simple-users.module';
 import { ComplexUsersModule } from './complex-users/users.module';
 import { HealthModule } from './health/health.module';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -16,6 +17,9 @@ import { HealthModule } from './health/health.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+
+    // Cache Module - Redis configuration
+    CacheModule,
 
     // GraphQL Configuration
     GraphQLModule.forRoot<ApolloDriverConfig>({
