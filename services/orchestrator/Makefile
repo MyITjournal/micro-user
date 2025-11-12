@@ -87,10 +87,20 @@ vet:
 	@echo "🔬 Vetting code..."
 	@go vet ./...
 
-# Integration test with mock data
+# Integration test with mock data (API endpoint tests)
 test-integration:
 	@echo "🧪 Running integration tests..."
 	@./scripts/test-integration.sh
+
+# Go integration tests (requires test infrastructure)
+test-integration-go:
+	@echo "🧪 Running Go integration tests..."
+	@./scripts/run-integration-tests.sh
+
+# Go integration tests without infrastructure setup (use existing services)
+test-integration-go-local:
+	@echo "🧪 Running Go integration tests with existing services..."
+	@./scripts/run-integration-tests.sh --no-setup
 
 # Kafka commands
 kafka-up:

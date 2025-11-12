@@ -4,13 +4,22 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 )
 
+// ProducerInterface defines the interface for Kafka producers
+type ProducerInterface interface {
+	Publish(ctx context.Context, key string, value interface{}) error
+	PublishBatch(ctx context.Context, messages []Message) error
+	Close() error
+	Stats() kafka.WriterStats
+}
+
 // Manager handles multiple Kafka producers for different topics
 type Manager struct {
-	emailProducer *Producer
-	pushProducer  *Producer
+	emailProducer ProducerInterface
+	pushProducer  ProducerInterface
 	logger        *zap.Logger
 }
 
@@ -77,17 +86,22 @@ func (m *Manager) PublishByType(ctx context.Context, notificationType, notificat
 func (m *Manager) Close() error {
 	m.logger.Info("Closing Kafka manager")
 
+	var firstErr error
 	if err := m.emailProducer.Close(); err != nil {
 		m.logger.Error("Failed to close email producer", zap.Error(err))
-		return err
+		if firstErr == nil {
+			firstErr = err
+		}
 	}
 
 	if err := m.pushProducer.Close(); err != nil {
 		m.logger.Error("Failed to close push producer", zap.Error(err))
-		return err
+		if firstErr == nil {
+			firstErr = err
+		}
 	}
 
-	return nil
+	return firstErr
 }
 
 // HealthCheck verifies connectivity to Kafka brokers

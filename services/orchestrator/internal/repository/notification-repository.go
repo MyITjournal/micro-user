@@ -40,18 +40,41 @@ func (r *postgresNotificationRepository) Create(ctx context.Context, notificatio
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	`
 
-	variablesJSON, err := json.Marshal(notification.Variables)
-	if err != nil {
-		return fmt.Errorf("failed to marshal variables: %w", err)
+	// Handle Variables JSONB - use the Value() method which implements driver.Valuer
+	// PostgreSQL JSONB expects string values, not []byte
+	var variablesJSON interface{}
+	var err error
+	if len(notification.Variables) == 0 {
+		variablesJSON = "{}"
+	} else {
+		variablesJSON, err = notification.Variables.Value()
+		if err != nil {
+			return fmt.Errorf("failed to marshal variables: %w", err)
+		}
+		// Convert []byte to string for PostgreSQL JSONB
+		if jsonBytes, ok := variablesJSON.([]byte); ok {
+			if len(jsonBytes) == 0 || string(jsonBytes) == "null" {
+				variablesJSON = "{}"
+			} else {
+				variablesJSON = string(jsonBytes)
+			}
+		} else if variablesJSON == nil {
+			variablesJSON = "{}"
+		}
 	}
 
-	var metadataJSON []byte
+	var metadataJSON interface{}
 	if notification.Metadata != nil {
-		metadataJSON, err = json.Marshal(notification.Metadata)
+		metadataJSON, err = notification.Metadata.Value()
 		if err != nil {
 			return fmt.Errorf("failed to marshal metadata: %w", err)
 		}
+		// Convert []byte to string for PostgreSQL JSONB
+		if jsonBytes, ok := metadataJSON.([]byte); ok {
+			metadataJSON = string(jsonBytes)
+		}
 	}
+	// If metadata is nil, pass nil (column allows NULL)
 
 	now := time.Now()
 	if notification.CreatedAt.IsZero() {

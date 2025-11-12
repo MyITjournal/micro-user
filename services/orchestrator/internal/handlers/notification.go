@@ -111,6 +111,7 @@ func (h *NotificationHandler) Create(c *gin.Context) {
 
 	duration := time.Since(startTime)
 	c.Header("X-Response-Time", duration.String())
+	c.Header("X-Idempotent-Replay", "false")
 
 	c.JSON(http.StatusCreated, models.Response{
 		Success: true,
