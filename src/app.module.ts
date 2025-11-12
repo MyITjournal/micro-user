@@ -5,7 +5,8 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
+import { SimpleUsersModule } from './simple-users/simple-users.module';
+import { ComplexUsersModule } from './complex-users/users.module';
 
 @Module({
   imports: [
@@ -60,7 +61,8 @@ import { UsersModule } from './users/users.module';
       },
     }),
 
-    UsersModule,
+    SimpleUsersModule,
+    ComplexUsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

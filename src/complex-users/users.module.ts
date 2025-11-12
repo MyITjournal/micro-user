@@ -13,4 +13,4 @@ import { UserDevice } from './entity/userDevices.entity';
   providers: [UserResolver, UserService],
   exports: [UserService],
 })
-export class UsersModule {}
+export class ComplexUsersModule {}
