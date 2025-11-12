@@ -1,0 +1,141 @@
+name: User Service CI
+
+on:
+  workflow_call:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'services/user-service/**'
+  pull_request:
+    paths:
+      - 'services/user-service/**'
+
+defaults:
+  run:
+    working-directory: services/user-service
+
+jobs:
+  lint:
+    name: Lint TypeScript Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/user-service/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+      
+      - name: Check formatting
+        run: npm run format:check
+      
+      - name: Type check
+        run: npm run type-check
+
+  test:
+    name: Test TypeScript Code
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/user-service/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run migrations
+        run: npm run migrate:test
+        env:
+          DATABASE_URL: postgres://postgres:test@localhost:5432/test_db
+      
+      - name: Run tests
+        run: npm test -- --coverage
+        env:
+          DATABASE_URL: postgres://postgres:test@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./services/user-service/coverage/lcov.info
+          flags: user-service
+
+  build:
+    name: Build TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/user-service/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Check build artifacts
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "::error::Build directory 'dist' not found"
+            exit 1
+          fi
+
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/user-service
+          file: ./services/user-service/Dockerfile
+          push: false
+          tags: user-service:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
