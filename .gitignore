@@ -238,3 +238,4 @@ vendor/
 # OS-specific
 .DS_Store
 Thumbs.db
+notification-email-service

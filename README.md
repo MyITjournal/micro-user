@@ -5,13 +5,17 @@
 ```
 notification-system/
 │
-├── api_gateway/            
+├── api_gateway/  
+│    
 │
 ├── services/
 │   ├── user_service/       
 │   ├── template_service/   
-│   ├── email_service/      
-│   ├── push_service/       
+│   ├── notification_service/  
+│       ├── email_worker/       
+│       ├── push_worker/  
+│       ├── email_service/      
+│       ├── push_service/      
 │
 ├── infra/
 │   ├── kafka/              
