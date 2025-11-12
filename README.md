@@ -238,40 +238,42 @@ health/
 
 ### Comprehensive Tests
 
+All manual API test scripts are located in the `test/manual/` folder.
+
 **Test all modules:**
 
 ```bash
-node test-both-modules.js
+node test/manual/test-both-modules.js
 ```
 
 **Test simple users:**
 
 ```bash
-node test-endpoint.js
+node test/manual/test-endpoint.js
 ```
 
 **Test GET all users:**
 
 ```bash
-node test-get-all-users.js
+node test/manual/test-get-all-users.js
 ```
 
 **Test health endpoints:**
 
 ```bash
-node test-health.js
+node test/manual/test-health.js
 ```
 
 **Test Redis caching:**
 
 ```bash
-node test-cache.js
+node test/manual/test-cache.js
 ```
 
 **Test update preferences:**
 
 ```bash
-node test-update-preferences.js
+node test/manual/test-update-preferences.js
 ```
 
 ### API Examples
