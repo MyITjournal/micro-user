@@ -3,8 +3,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { SimpleUsersModule } from './simple-users/simple-users.module';
 import { ComplexUsersModule } from './complex-users/users.module';
 import { HealthModule } from './health/health.module';
@@ -70,7 +68,5 @@ import { CacheModule } from './cache/cache.module';
     ComplexUsersModule,
     HealthModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
