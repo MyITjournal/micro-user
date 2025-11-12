@@ -16,3 +16,9 @@ CREATE TABLE IF NOT EXISTS simple_users (
 
 -- Create index on email for faster lookups
 CREATE INDEX IF NOT EXISTS idx_simple_users_email ON simple_users(email);
+
+--: Add missing columns
+ALTER TABLE simple_users 
+ADD COLUMN IF NOT EXISTS last_notification_email TIMESTAMP,
+ADD COLUMN IF NOT EXISTS last_notification_push TIMESTAMP,
+ADD COLUMN IF NOT EXISTS last_notification_id VARCHAR(100),
