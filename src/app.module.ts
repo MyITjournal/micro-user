@@ -7,6 +7,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SimpleUsersModule } from './simple-users/simple-users.module';
 import { ComplexUsersModule } from './complex-users/users.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ComplexUsersModule } from './complex-users/users.module';
 
     SimpleUsersModule,
     ComplexUsersModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
