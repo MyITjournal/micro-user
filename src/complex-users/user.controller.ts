@@ -19,7 +19,7 @@ import {
   UpdateLastNotificationInput,
 } from './dto/user.dto';
 
-@Controller('api/v1/users')
+@Controller('api/v1/cusers')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 

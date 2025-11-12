@@ -1,0 +1,188 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  HttpException,
+  HttpStatus,
+  HttpCode,
+} from '@nestjs/common';
+import { SimpleUsersService } from './simple-users.service';
+import {
+  CreateSimpleUserInput,
+  SimpleUserResponse,
+  SimpleUserPreferencesResponse,
+  BatchGetSimpleUserPreferencesInput,
+  BatchGetSimpleUserPreferencesResponse,
+  UpdateLastNotificationInput,
+} from './dto/simple-user.dto';
+
+@Controller('api/v1/users')
+export class SimpleUsersController {
+  constructor(private readonly simpleUsersService: SimpleUsersService) {}
+
+  @Get()
+  async getAllUsers(): Promise<SimpleUserPreferencesResponse[]> {
+    try {
+      return await this.simpleUsersService.getAllUsers();
+    } catch (error) {
+      throw new HttpException(
+        {
+          error: {
+            code: 'USERS_FETCH_FAILED',
+            message: 'Failed to fetch users',
+            details: {
+              error: error.message,
+            },
+          },
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post()
+  async createUser(
+    @Body() input: CreateSimpleUserInput,
+  ): Promise<SimpleUserResponse> {
+    console.log('SimpleUsersController.createUser received:', input);
+    try {
+      return await this.simpleUsersService.createUser(input);
+    } catch (error) {
+      if (error.code === '23505') {
+        // Unique constraint violation (email already exists)
+        throw new HttpException(
+          {
+            error: {
+              code: 'EMAIL_ALREADY_EXISTS',
+              message: 'A user with this email already exists',
+              details: {
+                email: input.email,
+              },
+            },
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      throw new HttpException(
+        {
+          error: {
+            code: 'USER_CREATION_FAILED',
+            message: 'Failed to create user',
+            details: {
+              error: error.message,
+            },
+          },
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get(':user_id/preferences')
+  async getUserPreferences(
+    @Param('user_id') userId: string,
+  ): Promise<SimpleUserPreferencesResponse> {
+    try {
+      return await this.simpleUsersService.getUserPreferences(userId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      if (error.status === 404 || error.message?.includes('USER_NOT_FOUND')) {
+        throw new HttpException(
+          {
+            error: {
+              code: 'USER_NOT_FOUND',
+              message: `User with ID ${userId} does not exist`,
+              details: {
+                user_id: userId,
+              },
+            },
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      throw new HttpException(
+        {
+          error: {
+            code: 'PREFERENCES_FETCH_FAILED',
+            message: 'Failed to fetch user preferences',
+            details: {
+              error: error.message,
+            },
+          },
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('preferences/batch')
+  async batchGetUserPreferences(
+    @Body() input: BatchGetSimpleUserPreferencesInput,
+  ): Promise<BatchGetSimpleUserPreferencesResponse> {
+    try {
+      // Check for duplicates
+      const uniqueIds = new Set(input.user_ids);
+      if (uniqueIds.size !== input.user_ids.length) {
+        throw new HttpException(
+          {
+            error: {
+              code: 'DUPLICATE_USER_IDS',
+              message: 'The user_ids array contains duplicate values',
+              details: {
+                total_provided: input.user_ids.length,
+                unique_count: uniqueIds.size,
+              },
+            },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      return await this.simpleUsersService.batchGetUserPreferences(input);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          error: {
+            code: 'BATCH_FETCH_FAILED',
+            message: 'Failed to fetch batch user preferences',
+            details: {
+              error: error.message,
+            },
+          },
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post(':user_id/last-notification')
+  @HttpCode(204)
+  async updateLastNotification(
+    @Param('user_id') userId: string,
+    @Body() input: UpdateLastNotificationInput,
+  ): Promise<void> {
+    // Fire-and-forget - don't wait for completion
+    this.simpleUsersService
+      .updateLastNotificationTime(userId, input)
+      .catch((error) => {
+        console.error(
+          `Fire-and-forget notification update failed for user ${userId}:`,
+          error,
+        );
+      });
+
+    // Return immediately
+    return;
+  }
+}

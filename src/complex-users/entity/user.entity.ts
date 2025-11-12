@@ -17,8 +17,19 @@ export class User {
   user_id: string;
 
   @Field()
+  @Column({ type: 'varchar', length: 255, default: 'User' })
+  name: string;
+
+  @Field()
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
+
+  @Column({ type: 'varchar', length: 255, default: '' })
+  password: string;
+
+  @Field({ nullable: true })
+  @Column({ type: 'text', nullable: true })
+  push_token?: string;
 
   @Field({ nullable: true })
   @Column({ type: 'varchar', length: 20, nullable: true })
@@ -35,6 +46,14 @@ export class User {
   @Field()
   @Column({ type: 'boolean', default: true })
   notification_enabled: boolean;
+
+  @Field()
+  @Column({ type: 'boolean', default: true })
+  email_preference: boolean;
+
+  @Field()
+  @Column({ type: 'boolean', default: true })
+  push_preference: boolean;
 
   @Field()
   @Column({ type: 'boolean', default: false })

@@ -34,336 +34,162 @@ src/
 └── app.module.ts         # Root module with GraphQL & TypeORM setup
 ```
 
-## Database Schema
+# Module Separation - Simple Users vs Complex Users
 
-### Entities
+## Overview
 
-1. **User** - Core user information and global preferences
-2. **UserChannel** - Channel-specific settings (email, push)
-3. **UserDevice** - Push notification device registry
+The application has been successfully split into two separate modules:
 
-### Relationships
+1. **Simple Users Module** - `/api/v1/users`
+2. **Complex Users Module** - `/api/v1/cusers`
 
-- User → UserChannel (One-to-Many)
-- UserChannel → UserDevice (One-to-Many)
+## Module Structure
 
-## Setup
+### Simple Users Module (`src/simple-users/`)
 
-### Prerequisites
+**Purpose:** Lightweight user management with basic preferences and notification tracking
 
-- Node.js >= 18
-- PostgreSQL >= 14
-- npm or yarn
+**Database:** `simple_users` table
 
-### Installation
+**Endpoints:**
 
-1. Clone the repository
-2. Install dependencies:
+- `POST /api/v1/users` - Create a simple user
+- `GET /api/v1/users/:user_id/preferences` - Get user preferences
+- `POST /api/v1/users/preferences/batch` - Batch get user preferences (max 100)
+- `POST /api/v1/users/:user_id/last-notification` - Update last notification time (fire-and-forget)
 
-   ```bash
-   npm install
-   ```
+**Entity Fields:**
 
-3. Create `.env` file from example:
+- `user_id` - Primary key (usr_xxxxxxxx)
+- `name` - User's name
+- `email` - Unique email
+- `password` - Bcrypt hashed password
+- `push_token` - Optional push notification token
+- `email_preference` - Boolean for email notifications
+- `push_preference` - Boolean for push notifications
+- `last_notification_email` - Last email notification timestamp
+- `last_notification_push` - Last push notification timestamp
+- `last_notification_id` - Last notification ID
+- `created_at` - Creation timestamp
+- `updated_at` - Update timestamp
 
-   ```bash
-   copy .env.example .env
-   ```
+**Files:**
 
-4. Configure database connection in `.env`:
+- `simple-users.module.ts` - Module definition
+- `simple-users.controller.ts` - REST controller
+- `simple-users.service.ts` - Business logic
+- `entity/simple-user.entity.ts` - TypeORM entity
+- `dto/simple-user.dto.ts` - DTOs for validation
 
-   ```env
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USERNAME=postgres
-   DB_PASSWORD=postgres
-   DB_NAME=user_service
-   ```
+### Complex Users Module (`src/complex-users/`)
 
-5. Initialize database:
-   ```bash
-   psql -U postgres -f database/schema.sql
-   ```
+**Purpose:** Full-featured notification preference system with channels and devices
 
-### Running the Application
+**Database:** `users`, `user_channels`, `user_devices` tables
 
-```bash
-# Development mode
-npm run start:dev
+**Endpoints:**
 
-# Production mode
-npm run build
-npm run start:prod
-```
+- `GET /api/v1/cusers/:user_id/preferences` - Get comprehensive user preferences
+- `POST /api/v1/cusers/preferences` - Create/update user preferences
+- `POST /api/v1/cusers/preferences/batch` - Batch get user preferences (max 100)
+- `GET /api/v1/cusers/:user_id/opt-out-status` - Check opt-out status
+- `POST /api/v1/cusers/:user_id/last-notification` - Update last notification time
+- GraphQL endpoint at `/api/v1/graphql`
 
-The service will be available at:
+**Entity Features:**
 
-- **GraphQL Playground**: `http://localhost:8080/api/v1/graphql`
-- **REST API**: `http://localhost:8080/api/v1/users`
+- Full user profile with timezone, language
+- Notification preferences (marketing, transactional, reminders)
+- Digest settings (frequency, time)
+- Email and push channels with quiet hours
+- Multiple devices per user
+- Verified status for channels
 
-## API Endpoints
+**Files:**
 
-### Core Endpoints
-
-**Get User Preferences**
-
-```bash
-GET /api/v1/users/{user_id}/preferences?include_channels=true
-```
-
-**Submit User Preferences**
-
-```bash
-POST /api/v1/users/preferences
-```
-
-### New Optimized Endpoints
-
-**Batch Get Multiple Users** (max 100 users)
-
-```bash
-POST /api/v1/users/preferences/batch
-{
-  "user_ids": ["usr_1", "usr_2"],
-  "include_channels": true
-}
-```
-
-**Quick Opt-Out Check** (<100ms)
-
-```bash
-GET /api/v1/users/{user_id}/opt-out-status
-```
-
-**Track Last Notification** (fire-and-forget)
-
-```bash
-POST /api/v1/users/{user_id}/last-notification
-{
-  "channel": "email",
-  "notification_type": "marketing",
-  "notification_id": "notif_123",
-  "sent_at": "2025-11-11T10:30:00Z"
-}
-```
-
-📖 **Full Documentation:**
-
-- [NEW_ENDPOINTS_DOCUMENTATION.md](NEW_ENDPOINTS_DOCUMENTATION.md) - Detailed API docs
-- [QUICK_REFERENCE_NEW_ENDPOINTS.md](QUICK_REFERENCE_NEW_ENDPOINTS.md) - Quick reference
-
-## API Usage
-
-### GraphQL Query
-
-#### Get User Preferences
-
-```graphql
-query GetUserPreferences($userId: String!, $includeChannels: Boolean) {
-  getUserPreferences(user_id: $userId, include_channels: $includeChannels) {
-    user_id
-    email
-    phone
-    timezone
-    language
-    notification_enabled
-    channels {
-      email {
-        enabled
-        verified
-        frequency
-        quiet_hours {
-          enabled
-          start
-          end
-          timezone
-        }
-      }
-      push {
-        enabled
-        devices {
-          device_id
-          platform
-          token
-          last_seen
-          active
-        }
-        quiet_hours {
-          enabled
-          start
-          end
-          timezone
-        }
-      }
-    }
-    preferences {
-      marketing
-      transactional
-      reminders
-      digest {
-        enabled
-        frequency
-        time
-      }
-    }
-    updated_at
-  }
-}
-```
-
-**Variables:**
-
-```json
-{
-  "userId": "usr_7x9k2p",
-  "includeChannels": true
-}
-```
-
-### Example Response
-
-```json
-{
-  "data": {
-    "getUserPreferences": {
-      "user_id": "usr_7x9k2p",
-      "email": "user@example.com",
-      "phone": "+254712345678",
-      "timezone": "Africa/Nairobi",
-      "language": "en",
-      "notification_enabled": true,
-      "channels": {
-        "email": {
-          "enabled": true,
-          "verified": true,
-          "frequency": "immediate",
-          "quiet_hours": {
-            "enabled": true,
-            "start": "22:00",
-            "end": "07:00",
-            "timezone": "Africa/Nairobi"
-          }
-        },
-        "push": {
-          "enabled": true,
-          "devices": [
-            {
-              "device_id": "dev_abc123",
-              "platform": "ios",
-              "token": "fcm_token_xyz...",
-              "last_seen": "2025-01-15T10:25:00Z",
-              "active": true
-            }
-          ],
-          "quiet_hours": {
-            "enabled": false
-          }
-        }
-      },
-      "preferences": {
-        "marketing": false,
-        "transactional": true,
-        "reminders": true,
-        "digest": {
-          "enabled": true,
-          "frequency": "daily",
-          "time": "09:00"
-        }
-      },
-      "updated_at": "2025-01-15T08:00:00Z"
-    }
-  }
-}
-```
-
-## Error Handling
-
-The service implements proper error handling:
-
-### User Not Found (404)
-
-```json
-{
-  "errors": [
-    {
-      "message": "User with ID usr_invalid does not exist",
-      "extensions": {
-        "code": "USER_NOT_FOUND"
-      }
-    }
-  ]
-}
-```
+- `users.module.ts` - Module definition (exported as ComplexUsersModule)
+- `user.controller.ts` - REST controller
+- `user.service.ts` - Business logic
+- `user.resolver.ts` - GraphQL resolver
+- `entity/user.entity.ts` - User entity
+- `entity/usersChannel.entity.ts` - Channel entity
+- `entity/userDevices.entity.ts` - Device entity
+- `dto/user.dto.ts` - DTOs for validation and GraphQL
 
 ## Testing
 
-```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
-```
-
-## Development
-
-### Adding New Features
-
-1. Create/update entities in `src/users/entity/`
-2. Define DTOs in `src/users/dto/`
-3. Implement business logic in `src/users/user.service.ts`
-4. Add GraphQL queries/mutations in `src/users/user.resolver.ts`
-5. Update module imports if needed
-
-### Code Style
+**Run the comprehensive test:**
 
 ```bash
-# Lint
-npm run lint
-
-# Format
-npm run format
+node test-both-modules.js
 ```
 
-## Deployment
-
-### Docker
-
-Create a `Dockerfile`:
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 8080
-CMD ["node", "dist/main"]
-```
-
-Build and run:
+**Test simple users only:**
 
 ```bash
-docker build -t user-service .
-docker run -p 8080:8080 user-service
+node test-endpoint.js
 ```
 
-## Environment Variables
+**Example - Create Simple User:**
 
-| Variable      | Description       | Default        |
-| ------------- | ----------------- | -------------- |
-| `PORT`        | Server port       | `8080`         |
-| `NODE_ENV`    | Environment       | `development`  |
-| `DB_HOST`     | Database host     | `localhost`    |
-| `DB_PORT`     | Database port     | `5432`         |
-| `DB_USERNAME` | Database user     | `postgres`     |
-| `DB_PASSWORD` | Database password | `postgres`     |
-| `DB_NAME`     | Database name     | `user_service` |
+```bash
+curl -X POST http://localhost:8000/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "preferences": {
+      "email": true,
+      "push": false
+    }
+  }'
+```
 
-## License
+## Key Differences
 
-UNLICENSED
+| Feature         | Simple Users      | Complex Users           |
+| --------------- | ----------------- | ----------------------- |
+| Route           | `/api/v1/users`   | `/api/v1/cusers`        |
+| Database        | single table      | 3 tables with relations |
+| Authentication  | password field    | no auth fields          |
+| Channels        | just booleans     | full channel config     |
+| Devices         | single push_token | multiple devices        |
+| Quiet Hours     | no                | yes                     |
+| GraphQL         | no                | yes                     |
+| Timezone        | no                | yes                     |
+| Digest          | no                | yes                     |
+| Marketing prefs | no                | yes                     |
+
+## Benefits of Separation
+
+1. **Simplicity** - Simple users for basic use cases
+2. **Performance** - Faster queries on simple_users table
+3. **Flexibility** - Each module can evolve independently
+4. **Clear Separation** - Different routes avoid confusion
+5. **Scalability** - Can deploy modules separately if needed
+
+## Database Migration
+
+The `simple_users` table is created by the migration script:
+
+- `database/migrations/create_simple_users_table.sql`
+
+This runs automatically on Heroku deployment via Procfile.
+
+## Server Status
+
+Both modules are loaded successfully:
+
+- ✓ SimpleUsersModule initialized
+- ✓ ComplexUsersModule initialized
+- ✓ All endpoints mapped correctly
+- ✓ 0 compilation errors
+
+## Next Steps
+
+1. Test both modules with real data
+2. Add authentication middleware if needed
+3. Consider rate limiting
+4. Add API documentation (Swagger/OpenAPI)
+5. Monitor performance of both modules

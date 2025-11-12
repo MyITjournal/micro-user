@@ -419,3 +419,61 @@ export class UpdateLastNotificationInput {
   @IsString()
   sent_at: string;
 }
+
+// Simple User Creation DTOs
+export class SimpleUserPreferenceInput {
+  @IsBoolean()
+  email: boolean;
+
+  @IsBoolean()
+  push: boolean;
+}
+
+export class CreateSimpleUserInput {
+  @IsString()
+  name: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  push_token?: string;
+
+  @ValidateNested()
+  @Type(() => SimpleUserPreferenceInput)
+  preferences: SimpleUserPreferenceInput;
+}
+
+@ObjectType()
+export class SimpleUserPreferenceResponse {
+  @Field()
+  email: boolean;
+
+  @Field()
+  push: boolean;
+}
+
+@ObjectType()
+export class SimpleUserResponse {
+  @Field()
+  user_id: string;
+
+  @Field()
+  name: string;
+
+  @Field()
+  email: string;
+
+  @Field({ nullable: true })
+  push_token?: string;
+
+  @Field(() => SimpleUserPreferenceResponse)
+  preferences: SimpleUserPreferenceResponse;
+
+  @Field()
+  created_at: Date;
+}

@@ -6,7 +6,12 @@
 ALTER TABLE users 
 ADD COLUMN IF NOT EXISTS last_notification_email TIMESTAMP,
 ADD COLUMN IF NOT EXISTS last_notification_push TIMESTAMP,
-ADD COLUMN IF NOT EXISTS last_notification_id VARCHAR(100);
+ADD COLUMN IF NOT EXISTS last_notification_id VARCHAR(100),
+ADD COLUMN IF NOT EXISTS name VARCHAR(255) DEFAULT 'User',
+ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '',
+ADD COLUMN IF NOT EXISTS push_token TEXT,
+ADD COLUMN IF NOT EXISTS email_preference BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS push_preference BOOLEAN DEFAULT true;
 
 -- Add indexes for better query performance (optional but recommended)
 CREATE INDEX IF NOT EXISTS idx_users_last_notification_email ON users(last_notification_email);
