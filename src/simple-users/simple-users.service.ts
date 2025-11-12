@@ -9,14 +9,17 @@ import {
   BatchGetSimpleUserPreferencesInput,
   BatchGetSimpleUserPreferencesResponse,
   UpdateLastNotificationInput,
+  UpdateSimpleUserPreferencesInput,
 } from './dto/simple-user.dto';
 import * as bcrypt from 'bcrypt';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class SimpleUsersService {
   constructor(
     @InjectRepository(SimpleUser)
     private readonly simpleUserRepository: Repository<SimpleUser>,
+    private readonly cacheService: CacheService,
   ) {}
 
   async createUser(input: CreateSimpleUserInput): Promise<SimpleUserResponse> {
@@ -59,6 +62,15 @@ export class SimpleUsersService {
   async getUserPreferences(
     userId: string,
   ): Promise<SimpleUserPreferencesResponse> {
+    // Try to get from cache first
+    const cached = await this.cacheService.getUserPreferences(userId);
+    if (cached) {
+      console.log(`Cache HIT for user preferences: ${userId}`);
+      return cached;
+    }
+
+    console.log(`Cache MISS for user preferences: ${userId}`);
+
     const user = await this.simpleUserRepository.findOne({
       where: { user_id: userId },
     });
@@ -73,7 +85,7 @@ export class SimpleUsersService {
       });
     }
 
-    return {
+    const response = {
       user_id: user.user_id,
       email: user.email,
       preferences: {
@@ -85,6 +97,11 @@ export class SimpleUsersService {
       last_notification_id: user.last_notification_id,
       updated_at: user.updated_at,
     };
+
+    // Cache the result (1 hour TTL)
+    await this.cacheService.setUserPreferences(userId, response, 3600);
+
+    return response;
   }
 
   async batchGetUserPreferences(
@@ -93,15 +110,35 @@ export class SimpleUsersService {
     // Remove duplicates from user_ids
     const uniqueUserIds = [...new Set(input.user_ids)];
 
-    // Fetch all users in one query
-    const users = await this.simpleUserRepository.find({
-      where: { user_id: In(uniqueUserIds) },
-    });
+    // Try to get from cache first
+    const cachedPreferences =
+      await this.cacheService.getBatchUserPreferences(uniqueUserIds);
 
-    // Build response for found users
-    const foundUserIds = new Set(users.map((u) => u.user_id));
-    const usersResponse: SimpleUserPreferencesResponse[] = users.map(
-      (user) => ({
+    console.log(
+      `Cache HIT for ${cachedPreferences.size} out of ${uniqueUserIds.length} users`,
+    );
+
+    // Find user IDs not in cache
+    const uncachedUserIds = uniqueUserIds.filter(
+      (id) => !cachedPreferences.has(id),
+    );
+
+    // Fetch uncached users from database
+    const users =
+      uncachedUserIds.length > 0
+        ? await this.simpleUserRepository.find({
+            where: { user_id: In(uncachedUserIds) },
+          })
+        : [];
+
+    console.log(
+      `Fetched ${users.length} users from database for ${uncachedUserIds.length} uncached IDs`,
+    );
+
+    // Build response for database users
+    const dbUsersMap = new Map<string, SimpleUserPreferencesResponse>();
+    users.forEach((user) => {
+      const response = {
         user_id: user.user_id,
         email: user.email,
         preferences: {
@@ -112,17 +149,30 @@ export class SimpleUsersService {
         last_notification_push: user.last_notification_push,
         last_notification_id: user.last_notification_id,
         updated_at: user.updated_at,
-      }),
-    );
+      };
+      dbUsersMap.set(user.user_id, response);
+    });
+
+    // Cache the database results (1 hour TTL)
+    if (dbUsersMap.size > 0) {
+      await this.cacheService.setBatchUserPreferences(dbUsersMap, 3600);
+    }
+
+    // Combine cached and database results
+    const allUsers = [
+      ...Array.from(cachedPreferences.values()),
+      ...Array.from(dbUsersMap.values()),
+    ];
 
     // Find not found user IDs
+    const foundUserIds = new Set(allUsers.map((u) => u.user_id));
     const notFound = uniqueUserIds.filter((id) => !foundUserIds.has(id));
 
     return {
-      users: usersResponse,
+      users: allUsers,
       not_found: notFound,
       total_requested: uniqueUserIds.length,
-      total_found: usersResponse.length,
+      total_found: allUsers.length,
     };
   }
 
@@ -148,14 +198,20 @@ export class SimpleUsersService {
 
     user.last_notification_id = input.notification_id;
 
-    // Save without waiting (fire-and-forget optimization)
-    this.simpleUserRepository.save(user).catch((error) => {
-      // Log error but don't throw (fire-and-forget)
-      console.error(
-        `Failed to update last notification time for user ${userId}:`,
-        error,
-      );
-    });
+    // Save and invalidate cache (fire-and-forget optimization)
+    this.simpleUserRepository
+      .save(user)
+      .then(() => {
+        // Invalidate cache after successful save
+        return this.cacheService.invalidateUserPreferences(userId);
+      })
+      .catch((error) => {
+        // Log error but don't throw (fire-and-forget)
+        console.error(
+          `Failed to update last notification time for user ${userId}:`,
+          error,
+        );
+      });
   }
 
   async getAllUsers(): Promise<SimpleUserPreferencesResponse[]> {
@@ -177,5 +233,53 @@ export class SimpleUsersService {
       last_notification_id: user.last_notification_id,
       updated_at: user.updated_at,
     }));
+  }
+
+  async updateUserPreferences(
+    userId: string,
+    input: UpdateSimpleUserPreferencesInput,
+  ): Promise<SimpleUserPreferencesResponse> {
+    const user = await this.simpleUserRepository.findOne({
+      where: { user_id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: `User with ID ${userId} does not exist`,
+        details: {
+          user_id: userId,
+        },
+      });
+    }
+
+    // Update only provided fields
+    if (input.email !== undefined) {
+      user.email_preference = input.email;
+    }
+
+    if (input.push !== undefined) {
+      user.push_preference = input.push;
+    }
+
+    // Save updated user
+    await this.simpleUserRepository.save(user);
+
+    // Invalidate cache after successful update
+    await this.cacheService.invalidateUserPreferences(userId);
+
+    // Return updated preferences
+    return {
+      user_id: user.user_id,
+      email: user.email,
+      preferences: {
+        email: user.email_preference,
+        push: user.push_preference,
+      },
+      last_notification_email: user.last_notification_email,
+      last_notification_push: user.last_notification_push,
+      last_notification_id: user.last_notification_id,
+      updated_at: user.updated_at,
+    };
   }
 }

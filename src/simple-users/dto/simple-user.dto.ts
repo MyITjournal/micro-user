@@ -88,6 +88,18 @@ export class BatchGetSimpleUserPreferencesResponse {
   total_found: number;
 }
 
+// ============ Update Preferences DTOs ============
+
+export class UpdateSimpleUserPreferencesInput {
+  @IsOptional()
+  @IsBoolean()
+  email?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  push?: boolean;
+}
+
 // ============ Update Last Notification DTOs ============
 
 export class UpdateLastNotificationInput {

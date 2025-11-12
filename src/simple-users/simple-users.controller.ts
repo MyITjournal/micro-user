@@ -7,6 +7,7 @@ import {
   HttpException,
   HttpStatus,
   HttpCode,
+  Patch,
 } from '@nestjs/common';
 import { SimpleUsersService } from './simple-users.service';
 import {
@@ -16,6 +17,7 @@ import {
   BatchGetSimpleUserPreferencesInput,
   BatchGetSimpleUserPreferencesResponse,
   UpdateLastNotificationInput,
+  UpdateSimpleUserPreferencesInput,
 } from './dto/simple-user.dto';
 
 @Controller('api/v1/users')
@@ -184,5 +186,64 @@ export class SimpleUsersController {
 
     // Return immediately
     return;
+  }
+
+  @Patch(':user_id/preferences')
+  async updateUserPreferences(
+    @Param('user_id') userId: string,
+    @Body() input: UpdateSimpleUserPreferencesInput,
+  ): Promise<SimpleUserPreferencesResponse> {
+    try {
+      // Validate that at least one field is provided
+      if (input.email === undefined && input.push === undefined) {
+        throw new HttpException(
+          {
+            error: {
+              code: 'NO_FIELDS_PROVIDED',
+              message:
+                'At least one preference field (email or push) must be provided',
+              details: {
+                provided_fields: Object.keys(input),
+              },
+            },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      return await this.simpleUsersService.updateUserPreferences(userId, input);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      if (error.status === 404 || error.message?.includes('USER_NOT_FOUND')) {
+        throw new HttpException(
+          {
+            error: {
+              code: 'USER_NOT_FOUND',
+              message: `User with ID ${userId} does not exist`,
+              details: {
+                user_id: userId,
+              },
+            },
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      throw new HttpException(
+        {
+          error: {
+            code: 'PREFERENCES_UPDATE_FAILED',
+            message: 'Failed to update user preferences',
+            details: {
+              error: error.message,
+            },
+          },
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
